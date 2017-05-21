@@ -17,6 +17,7 @@ type
    Speed:Integer; //скорость машины
    SpeedMax:Integer; //max скорость машины
    SpeedMin:Integer; //min скорость машины
+   collisionSize:Integer; //размер колизии для машины
  end;
 
  //тип данных объектов
@@ -71,7 +72,6 @@ var
 
  p:car;  //игрок
  house:entity; //дом
- BoolCollX,BoolCollY:Boolean;
 
  k:Integer;    //число шагов таймера
 
@@ -81,26 +81,28 @@ implementation
 
 { TForm1 }
 
-function collision(o:car; e:entity):Boolean;      //проверка колизии
-Begin
-    //x левый  y верхний  XL:YU
- If ((o.xCent+100+o.MultiplierDirectionX<e.xUpLeft) or (o.xCent-100+o.MultiplierDirectionX>e.xDownRight))
-    and
-    ((o.yCent+100+o.MultiplierDirectionY<=e.yUpLeft-1) or (o.yCent-100+o.MultiplierDirectionY>e.yDownRight))
-    then  collision:=false
-     else collision:=true;
-end;
+//function collision(o:car; e:entity):Boolean;      //проверка колизии
+//Begin
+//    //x левый  y верхний  XL:YU
+// If ((o.xCent+100+o.MultiplierDirectionX<e.xUpLeft) or (o.xCent-100+o.MultiplierDirectionX>e.xDownRight))
+//    and
+//    ((o.yCent+100+o.MultiplierDirectionY<=e.yUpLeft-1) or (o.yCent-100+o.MultiplierDirectionY>e.yDownRight))
+//    then  collision:=false
+//     else collision:=true;
+//end;
 
 function collisionX(o:car; e:entity):Boolean;     //проверка колизии  x
 Begin
- If (o.xCent+100+o.MultiplierDirectionX<e.xUpLeft) or (o.xCent-100+o.MultiplierDirectionX>e.xDownRight)
+ If (o.xCent+o.collisionSize+o.MultiplierDirectionX<e.xUpLeft)
+    or (o.xCent-o.collisionSize+o.MultiplierDirectionX>e.xDownRight)
     then collisionX:=false
      else collisionX:=true;
 end;
 
 function collisionY(o:car; e:entity):Boolean;     //проверка колизии y
 Begin
- If (o.yCent+100+o.MultiplierDirectionY<=e.yUpLeft-1) or (o.yCent-100+o.MultiplierDirectionY>e.yDownRight)
+ If (o.yCent+o.collisionSize+o.MultiplierDirectionY<=e.yUpLeft-1)
+    or (o.yCent-o.collisionSize+o.MultiplierDirectionY>e.yDownRight)
     then collisionY:=false
      else collisionY:=true;
 end;
@@ -113,12 +115,13 @@ begin
  //скорость игрока
  p.Speed:=1;
  p.SpeedMax:=15;
- p.SpeedMin:=-5;
+ p.SpeedMin:=-7;
 
  //определение координат машины игрока
  p.xCent:=Image1.Width div 2;
  p.yCent:=Image1.Height div 2;
  p.direction:=0;;
+ p.collisionSize:=90;
 
  //определение координат дома
  Randomize;
@@ -190,7 +193,12 @@ begin
   Begin
    If (p.Speed<p.SpeedMax) and (k mod 3=0) then Inc(p.Speed);
   end
-   else If (p.Speed>0) and (k mod 3=0) then Dec(p.Speed);
+   else
+    If GetKeyState(40)<-126 then
+     Begin
+      If (p.Speed>p.SpeedMin) and (k mod 3=0) then Dec(p.Speed);
+     end
+    else If (p.Speed>0) and (k mod 3=0) then Dec(p.Speed);
 
 
 //высчитывание множителя направления
@@ -262,7 +270,7 @@ begin
  label13.Caption:=IntToStr(p.yCent+100);
  Label14.Caption:=BoolToStr(collisionX(p,house),'true','false');
  Label15.Caption:=BoolToStr(collisionY(p,house),'true','false');
- Label16.Caption:=BoolToStr(collision(p,house),'true','false');
+ //Label16.Caption:=BoolToStr(collision(p,house),'true','false');
 
  {If not collision(p,house) then
   Begin
@@ -270,52 +278,33 @@ begin
    p.yCent:=p.yCent+p.MultiplierDirectionY;   //движение машины игрока по y
   end;}
 
- {If not collisionX(p,house) and not collisionY(p,house)  then
+ If not (collisionX(p,house) and collisionY(p,house))  then  //если колизия по x и колизия по y нет то машина едет
   Begin
    p.xCent:=p.xCent+p.MultiplierDirectionX;   //движение машины игрока по x
-   //p.yCent:=p.yCent+p.MultiplierDirectionY;   //движение машины игрока по y
+   p.yCent:=p.yCent+p.MultiplierDirectionY;   //движение машины игрока по y
   end;
 
- If not collisionX(p,house) and not collisionY(p,house)  then
-  Begin
-   //p.xCent:=p.xCent+p.MultiplierDirectionX;   //движение машины игрока по x
-   p.yCent:=p.yCent+p.MultiplierDirectionY;   //движение машины игрока по y
-  end;}
 
-  If ((p.xCent+100+p.MultiplierDirectionX<house.xUpLeft) or (p.xCent-100+p.MultiplierDirectionX>house.xDownRight))
-    and
-    ((p.yCent+100+p.MultiplierDirectionY<=house.yUpLeft-1) or (p.yCent-100+p.MultiplierDirectionY>house.yDownRight))
-    then
-    begin
-     BoolCollY:=false;
-     BoolCollX:=false;
-    end
-    else
-      begin
-        if (p.xCent+100+p.MultiplierDirectionX<house.xUpLeft) and (p.xCent-100+p.MultiplierDirectionX>house.xDownRight)
-        then
-        else BoolCollX:=true;
-        if (p.yCent+100+p.MultiplierDirectionY<=house.yUpLeft-1) or (p.yCent-100+p.MultiplierDirectionY>house.yDownRight)
-        then
-        else BoolCollY:=true;
-      end;
 
- If BoolCollX=false then
-   p.xCent:=p.xCent+p.MultiplierDirectionX;   //движение машины игрока по x
- if BoolCollY=false then
-   p.yCent:=p.yCent+p.MultiplierDirectionY;   //движение машины игрока по y
 
  //отрисовка машины игрока
  Image1.Canvas.Pen.Color:=clRed;
- Image1.Canvas.Rectangle(p.xCent-100,p.yCent-100,p.xCent+100,p.yCent+100);
- ListImage.Draw(Image1.Canvas,p.xCent-100,p.yCent-100,p.direction);
+
+ //рисование колизии
+ Image1.Canvas.Rectangle
+  (p.xCent-p.collisionSize,p.yCent-p.collisionSize,p.xCent+p.collisionSize,p.yCent+p.collisionSize);
+
+ //рисование машины
+ ListImage.Draw(Image1.Canvas,p.xCent-p.collisionSize,p.yCent-p.collisionSize,p.direction);
+
 
  //отрисовка оюъектов
-
-
-
  Image1.Canvas.Pen.Color:=clRed;
+
+ //рисование колизии
  Image1.Canvas.Rectangle(house.xUpLeft,house.yUpLeft,house.xDownRight,house.yDownRight);
+
+ //рисование дома
  ListImageEntity.Draw(Image1.Canvas,house.xCent-house.width,house.yCent-house.height,house.index);
 end;
 
