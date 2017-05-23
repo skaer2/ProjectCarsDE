@@ -87,6 +87,8 @@ var
  gip:real; //Гипотенуза при работе с xM и yM
  angle:real; //Угол при работе с xM и yM
  yMReal,xMReal:Real;
+
+
 implementation
 
 {$R *.lfm}
@@ -228,7 +230,9 @@ end;
 
 procedure TForm1.Timer1Timer(Sender:TObject);
 Var
- i,plus,minus:Integer;
+ i:Integer;
+ lastMove:string;
+ s:integer;
 begin
  Inc(k);
 
@@ -243,17 +247,33 @@ begin
 
  //меняем направление машины
 
- If (p.Direction<>p.NeedDirection) then
-  If ((abs(p.direction-p.NeedDirection))<18) or (p.direction-p.NeedDirection>18) then
+  // проблема в переходе от 35° к 1 и более °
+  // можно попробовать решить, если 0 и более ° считать за 36->37->38 и далее °
+  // я уроки делать
+
+{ If (p.Direction<>p.NeedDirection) then
+  If (35-p.direction+p.NeedDirection+1 < Abs(p.direction-p.NeedDirection))
+   and (35-p.direction+p.NeedDirection+1 <> Abs(p.direction-p.NeedDirection))
+   then
    Begin
     inc(p.direction);
     If p.direction>=36 then p.direction:=0;
+    lastMove:='Inc';
    end
     else
-     Begin
-      Dec(p.direction);
-      If p.direction<=-1 then p.direction:=35;
-     end;
+     If (35-p.direction+p.NeedDirection+1 > Abs(p.direction-p.NeedDirection))
+      and (35-p.direction+p.NeedDirection+1 <> Abs(p.direction-p.NeedDirection))
+      then
+       Begin
+        Dec(p.direction);
+        If p.direction<=-1 then p.direction:=35;
+        lastMove:='Dec';
+       end
+       else
+        If lastMove='Inc' then Inc(p.direction)
+         else If lastMove='Dec' then Dec(p.direction);     }
+
+
 
 
 
@@ -356,9 +376,9 @@ begin
  Label15.Caption:=BoolToStr(collisionY(p,house),'true','false');
  label17.Caption:=IntToStr(xM);
  label18.Caption:=IntToStr(yM);
- Label19.Caption:=FloatToStr(angle);
- label20.Caption:=FloatToStr(gip);
- label21.Caption:=FloatToStr(yMReal);
+ Label19.Caption:=IntToStr(p.NeedDirection);
+ label20.Caption:=IntToStr(35-p.direction+p.NeedDirection+1)+'   '+IntToStr( Abs(p.direction-p.NeedDirection));
+ label21.Caption:=lastMove;
  label22.Caption:=IntToStr(Round(angle));
  //Label16.Caption:=BoolToStr(collision(p,house),'true','false');
 
