@@ -8,6 +8,20 @@ uses
  Classes,SysUtils,FileUtil,Forms,Controls,Graphics,Dialogs,ExtCtrls,StdCtrls,
  Windows;
 
+Const
+ MaxLvlSX=20;
+ MaxLvlSY=20;
+ MaxRoadCount=7;
+ MinCrossDistanceFromCenter=3;
+ MaxCrossChance=8;
+
+ //массивы moveI, moveJ хранят индексы перемещений возможные значения -1, 0, +1
+// ###   (j-1,i-1) (j+0,i-1) (j+1,i-1)
+// #x#   (j-1,i+0)  (j, i)   (j+1,i+0)
+// ###   (j-1,i+1) (j+0,i+1) (j+1,i+1)
+  moveX : Array [1..4] Of shortint = ( 0,  0,  1, -1);
+  moveY : Array [1..4] Of shortint = (-1,  1,  0,  0);
+
 type
   //тип данных машины
  car=record
@@ -31,14 +45,25 @@ type
    index:Integer; //индекс объекта
  end;
 
+ BackGround=record
+   xLeft,yUp:Integer;
+   GroundType:Integer; //0 пустой тайл; 1 тайл с преградой; 2 тайл с перекрёстком;
+                       //3 тайл с дорогой слева направо; 4 дорога сверху вниз;
+   changed:Boolean;
+ end;
 
+ //gameLevel=record
+ // g:array[0..MaxLvlSX, 0..MaxLvlSY] of BackGround;
+ //end;
 
  { TForm1 }
 
  TForm1 = class(TForm)
   Button1:TButton;
   Button2:TButton;
+  Button3:TButton;
   Image1:TImage;
+  BackgroundListImage:TImageList;
   Label10:TLabel;
   Label11:TLabel;
   Label12:TLabel;
@@ -63,12 +88,19 @@ type
   Label2:TLabel;
   Label3:TLabel;
   ListImage:TImageList;
+  Memo1:TMemo;
   Timer1:TTimer;
   procedure Button1Click(Sender:TObject);
   procedure Button2Click(Sender:TObject);
+  procedure Button3Click(Sender:TObject);
   procedure FormCreate(Sender:TObject);
   procedure Image1MouseMove(Sender:TObject; Shift:TShiftState; X,Y:Integer);
   procedure Timer1Timer(Sender:TObject);
+
+  procedure InitLevel(Sender:TObject{; level:gameLevel});
+  Procedure ProLevelGen(Sender:TObject; x,y:Integer; BeforeDirection:Integer);
+  //procedure InitLevel();
+
  private
   { private declarations }
  public
@@ -87,6 +119,10 @@ var
  gip:real; //Гипотенуза при работе с xM и yM
  angle:real; //Угол при работе с xM и yM
  yMReal,xMReal:Real;
+ //g:BackGround;
+ g:array[0..MaxLvlSX, 0..MaxLvlSY] of BackGround;
+ movingBck:Boolean;
+
 
 
 implementation
@@ -102,17 +138,17 @@ function ArcCos(cosA:Real):Real;     //функция нахождения уг�
 Var
  sinA,a:Real;
 Begin
- sinA:=Sqrt(1-Sqr(cosA));
+ sinA:=Sqrt(1-Sqr(cosA));             //нахождение синуса
  If cosA<>0 then
  Begin
-  a:=ArcTan(sinA/cosA);
-  a:=a*(180/Pi);
+  a:=ArcTan(sinA/cosA);              //нахождение угла в радианах
+  a:=a*(180/Pi);                     //перевод угла в градусы
  end
   else a:=0;
  result:=a;
 end;
 
- function WhatDirection(o:car; y,x:Integer):Integer;
+function WhatDirection(o:car; xM,yM:Integer):Integer;       //функция определения направления машины
 Var
  gip:real;
  angle:real;
@@ -120,18 +156,18 @@ Var
 Begin
  yMReal:=Real(Abs(yM));
  xMReal:=Real(Abs(xM));
- Gip:=sqrt(sqr(Abs(xM))+sqr(Abs(yM)));
+ Gip:=sqrt(sqr(Abs(xM))+sqr(Abs(yM)));   //Нахождение гипотенузы
 
-  If ((yMReal<>0) or (gip<>0))and((xM>0) and (yM<0)) then
+  If ((yMReal<>0) or (gip<>0))and((xM>0) and (yM<0)) then        //1 четверть
     angle:=ArcCos(yMReal/gip);
 
-  If ((xMReal<>0) or (gip<>0))and((xM>0) and (yM>0)) then
+  If ((xMReal<>0) or (gip<>0))and((xM>0) and (yM>0)) then        //4 четверть
     angle:=ArcCos(xMReal/gip)+90;
 
-  If ((yMReal<>0) or (gip<>0))and((xM<0) and (yM>0)) then
+  If ((yMReal<>0) or (gip<>0))and((xM<0) and (yM>0)) then        //3 четверть
     angle:=ArcCos(yMReal/gip)+180;
 
-  If ((xMReal<>0) or (gip<>0))and((xM<0) and (yM<0)) then
+  If ((xMReal<>0) or (gip<>0))and((xM<0) and (yM<0)) then        //2 четверть
     angle:=ArcCos(xMReal/gip)+270;
 
 
@@ -139,6 +175,35 @@ Begin
    else o.direction:=Round(angle) div 10;
 
   result:=o.direction;
+end;
+
+function calcShortestWay(was, mouseTo: integer):Integer;     //нахождение кратчайшего пути справо налево
+var
+ oneWay, anotherWay: integer;
+begin
+ oneWay := abs(mouseTo-was) mod 35;
+ anotherWay := ((35 - mouseTo) mod 35  + was) mod 35;
+ if (anotherWay > oneWay) then
+ if (mouseTo-was>0) then result:=1 else result:=-1
+ else
+ result:=-1; // oneWay > anotherWay
+end;
+
+Function FastestWay(was,need:Integer):Integer;               //нахождение кратчайшего пути слева направо
+Var
+ minusWay, plusWay: integer;
+Begin
+ minusWay:=(was-need);
+ plusWay:=36-was+need;
+ If (minusWay<plusWay) and (minusWay>0) then FastestWay:=-1
+  else If (plusWay<minusWay) or (minusWay<0) then FastestWay:=1;
+end;
+
+function RealFastWay(was,need:Integer):Integer;              //получение правильного кратчайшего пути
+Begin
+ If (was>=18) and (need<=18) then result:=FastestWay(was,need);
+ If (was<18) and (need>18) then result:=calcShortestWay(was,need)
+  else result:=FastestWay(was,need);
 end;
 
 function collisionX(o:car; e:entity):Boolean;     //проверка колизии  x
@@ -157,12 +222,111 @@ Begin
      else collisionY:=true;
 end;
 
-procedure TForm1.FormCreate(Sender:TObject);
+function checkBounds(i,j: byte):boolean;
 begin
+ Result:=((j>=0) and (j<=MaxLvlSY)) and ((i>=0) and (i<=MaxLvlSX)); //Если true то всё в порядке
+end;
+
+procedure TForm1.InitLevel(Sender:TObject{; level:gameLevel});
+Var
+ lk,x,y:Integer;
+ FromCenter:Integer;
+ CrossChance:Integer;
+ numberOfDirections,direction:Integer; // 1-up 2-right 3-down 4-left
+Begin
+ For x:=0 to MaxLvlSX do
+  For y:=0 to MaxLvlSY do g[x,y].changed:=False;
+
+ Randomize;
+
+ //
+ //For i:=0 to MaxLvlSX do
+  //For j:=0 to MaxLvlSY do g[i,j].GroundType:=Random(5);
+
+  //0 пустой тайл; 1 тайл с преградой; 2 тайл с перекрёстком;
+ //3 дорога сверху вниз; 4 тайл с дорогой слева направо;
+
+
+ x:=MaxLvlSX div 2+Random(10)-5;
+ y:=MaxLvlSX div 2+Random(10)-5;
+ If checkBounds(x,y) then
+  Begin
+   g[x,y].GroundType:=2;
+   g[x,y].changed:=True;
+  end
+  else
+   Begin
+    x:=MaxLvlSX div 2+Random(4)-2;
+    y:=MaxLvlSX div 2+Random(4)-2;
+    g[x,y].GroundType:=2;
+    g[x,y].changed:=True;
+   end;
+
+ ProLevelGen(Sender,x,y,0);
+
+end;
+
+Procedure TForm1.ProLevelGen(Sender:TObject; x,y:Integer; BeforeDirection:Integer);
+Var
+ lk:Integer;
+ FromCenter:Integer;
+ CrossChance:Integer;
+ numberOfDirections,direction:Integer; // 1-up 2-right 3-down 4-left
+Begin
+
+ Randomize;
+ Repeat
+  direction:=Random(4)+1;
+ until direction<>BeforeDirection;
+
+ numberOfDirections:=Random(2)+2;
+
+ FromCenter:=0;
+
+ For lk:=1 to numberOfDirections do
+  Begin
+   Repeat
+    Case direction of
+     1: Dec(y);
+     2: Inc(x);
+     3: Inc(y);
+     4: Dec(x);
+    end;
+
+    Inc(FromCenter);
+
+    CrossChance:=Random(MaxCrossChance);
+    If (CrossChance=3) and (FromCenter>=MinCrossDistanceFromCenter) and (checkBounds(x,y)) then
+     Begin
+      g[x,y].GroundType:=2;
+      g[x,y].changed:=True;
+      ProLevelGen(Sender,x,y,direction);
+     end
+     else  If (checkBounds(x,y)) then
+      Begin
+       If ((direction=1) or (direction=3)) and not(g[x,y].changed)
+          then g[x,y].GroundType:=3;
+       If ((direction=2) or (direction=2)) and not(g[x,y].changed)
+          then g[x,y].GroundType:=4;
+
+       g[x,y].changed:=True;
+      end;
+
+    direction:=Random(4)+1;
+   Until (y<=0) or (y>=MaxLvlSY) or (x<=0) or (x>=MaxLvlSX);
+  end;
+end;
+
+
+
+procedure TForm1.FormCreate(Sender:TObject);
+Var
+ i,j:Integer;
+ s:string;
+begin
+  xMReal:=5;
   yMReal:=5;
   gip:=6;
-  //xM:=1;
-  //yM:=1;
 
  //
  k:=0;
@@ -205,6 +369,18 @@ begin
 
  //отрисовка оъектов
  ListImageEntity.Draw(Image1.Canvas,house.xCent,house.yCent,house.index);
+
+
+ InitLevel(Sender);
+ s:='';
+
+ //Memo1.Lines.Add();
+ For i:=0 to MaxLvlSX do
+  Begin
+   For j:=0 to MaxLvlSY do s:=s+IntToStr(g[i,j].GroundType)+'   ';
+   Memo1.Lines.Add(s);
+   s:='';
+  end;
 end;
 
 procedure TForm1.Image1MouseMove(Sender:TObject; Shift:TShiftState; X,Y:Integer
@@ -228,21 +404,15 @@ begin
  If p.direction>=36 then p.direction:=0;
 end;
 
+procedure TForm1.Button3Click(Sender:TObject);
+begin
+ movingBck:=not movingBck;
+end;
+
 procedure TForm1.Timer1Timer(Sender:TObject);
 Var
  i:Integer;
- lastMove:string;
- s:integer;
 begin
-
- {p.ang - сечас
-  ang  -куда надо
-  if (abs(p.ang - ang))<(abs(p.ang-(ang+360)) then rot_dir:=-1
-  else rot_dir:=1
-    p.ang:=p.ang + rot_dir;
-  p.position:=Roung(p.ang) div 10
- }
-
  Inc(k);
 
  Image1.Canvas.Clear;                       // отчиска канваса
@@ -255,34 +425,10 @@ begin
 
 
  //меняем направление машины
-
-  // проблема в переходе от 35° к 1 и более °
-  // можно попробовать решить, если 0 и более ° считать за 36->37->38 и далее °
-  // я уроки делать
-
  If (p.Direction<>p.NeedDirection) then
-  If (35-p.direction+p.NeedDirection+1 < Abs(p.direction-p.NeedDirection))
-   and (35-p.direction+p.NeedDirection+1 <> Abs(p.direction-p.NeedDirection))
-   then
-   Begin
-    inc(p.direction);
-    If p.direction>=36 then p.direction:=0;
-    lastMove:='Inc';
-   end
-    else
-     If (35-p.direction+p.NeedDirection+1 > Abs(p.direction-p.NeedDirection))
-      and (35-p.direction+p.NeedDirection+1 <> Abs(p.direction-p.NeedDirection))
-      then
-       Begin
-        Dec(p.direction);
-        If p.direction<=-1 then p.direction:=35;
-        lastMove:='Dec';
-       end
-       else
-        If lastMove='Inc' then Inc(p.direction)
-         else If lastMove='Dec' then Dec(p.direction);
-
-
+  p.direction:=p.direction+RealFastWay(p.direction,p.NeedDirection);
+ If p.direction>=36 then p.direction:=0;
+ If p.direction<=-1 then p.direction:=35;
 
 
 
@@ -387,22 +533,31 @@ begin
  label18.Caption:=IntToStr(yM);
  Label19.Caption:=IntToStr(p.NeedDirection);
  label20.Caption:=IntToStr(35-p.direction+p.NeedDirection+1)+'   '+IntToStr( Abs(p.direction-p.NeedDirection));
- label21.Caption:=lastMove;
- label22.Caption:=IntToStr(Round(angle));
- //Label16.Caption:=BoolToStr(collision(p,house),'true','false');
 
 
 
- If not (collisionX(p,house) and collisionY(p,house))  then  //если колизия по x и колизия по y нет то машина едет
+ {If not (collisionX(p,house) and collisionY(p,house))  then  //если колизия по x и колизия по y нет то машина едет
   Begin
-   p.xCent:=p.xCent+p.MultiplierDirectionX;   //движение машины игрока по x
-   p.yCent:=p.yCent+p.MultiplierDirectionY;   //движение машины игрока по y
-  end;
+   If movingBck then
+    Begin
+     //g.xCent:=g.xCent-p.MultiplierDirectionX;   //движение машины игрока по x
+     //g.yCent:=g.yCent-p.MultiplierDirectionY;   //движение машины игрока по y
+    end
+   else
+    Begin
+     p.xCent:=p.xCent+p.MultiplierDirectionX;   //движение машины игрока по x
+     p.yCent:=p.yCent+p.MultiplierDirectionY;   //движение машины игрока по y
+    end;
+  end;}
 
 
 
  Image1.Canvas.Pen.Color:=clRed;
  Image1.Canvas.Rectangle(0+Image1.Width-5,0+Image1.Height-5,0+Image1.Width+5,0+Image1.Height+5);
+
+ //отрисовка заднего фона
+  //BackgroundListImage.Draw(Image1.Canvas,g.xCent,g.yCent,0);
+  //For i:=
 
  //отрисовка машины игрока
  Image1.Canvas.Pen.Color:=clRed;
