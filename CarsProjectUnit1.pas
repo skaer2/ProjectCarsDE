@@ -13,6 +13,7 @@ type
  car=record
    xCent,yCent:Integer; //центральные координаты машины
    direction:Integer;   //направление машины
+   NeedDirection:Integer; //направление которое должно быть
    MultiplierDirectionX,MultiplierDirectionY:Integer; //множитель направления()
    Speed:Integer; //скорость машины
    SpeedMax:Integer; //max скорость машины
@@ -45,6 +46,12 @@ type
   Label14:TLabel;
   Label15:TLabel;
   Label16:TLabel;
+  Label17:TLabel;
+  Label18:TLabel;
+  Label19:TLabel;
+  Label20:TLabel;
+  Label21:TLabel;
+  Label22:TLabel;
   Label4:TLabel;
   Label5:TLabel;
   Label6:TLabel;
@@ -60,6 +67,7 @@ type
   procedure Button1Click(Sender:TObject);
   procedure Button2Click(Sender:TObject);
   procedure FormCreate(Sender:TObject);
+  procedure Image1MouseMove(Sender:TObject; Shift:TShiftState; X,Y:Integer);
   procedure Timer1Timer(Sender:TObject);
  private
   { private declarations }
@@ -75,21 +83,61 @@ var
 
  k:Integer;    //число шагов таймера
 
+ xM,yM:Integer; //xMouse yMouse
+ gip:real; //Гипотенуза при работе с xM и yM
+ angle:real; //Угол при работе с xM и yM
+ yMReal,xMReal:Real;
 implementation
 
 {$R *.lfm}
 
 { TForm1 }
 
-//function collision(o:car; e:entity):Boolean;      //проверка колизии
-//Begin
-//    //x левый  y верхний  XL:YU
-// If ((o.xCent+100+o.MultiplierDirectionX<e.xUpLeft) or (o.xCent-100+o.MultiplierDirectionX>e.xDownRight))
-//    and
-//    ((o.yCent+100+o.MultiplierDirectionY<=e.yUpLeft-1) or (o.yCent-100+o.MultiplierDirectionY>e.yDownRight))
-//    then  collision:=false
-//     else collision:=true;
-//end;
+
+
+
+function ArcCos(cosA:Real):Real;     //функция нахождения угла из косинуса
+Var
+ sinA,a:Real;
+Begin
+ sinA:=Sqrt(1-Sqr(cosA));
+ If cosA<>0 then
+ Begin
+  a:=ArcTan(sinA/cosA);
+  a:=a*(180/Pi);
+ end
+  else a:=0;
+ result:=a;
+end;
+
+ function WhatDirection(o:car; y,x:Integer):Integer;
+Var
+ gip:real;
+ angle:real;
+ yMReal,xMReal:Real;
+Begin
+ yMReal:=Real(Abs(yM));
+ xMReal:=Real(Abs(xM));
+ Gip:=sqrt(sqr(Abs(xM))+sqr(Abs(yM)));
+
+  If ((yMReal<>0) or (gip<>0))and((xM>0) and (yM<0)) then
+    angle:=ArcCos(yMReal/gip);
+
+  If ((xMReal<>0) or (gip<>0))and((xM>0) and (yM>0)) then
+    angle:=ArcCos(xMReal/gip)+90;
+
+  If ((yMReal<>0) or (gip<>0))and((xM<0) and (yM>0)) then
+    angle:=ArcCos(yMReal/gip)+180;
+
+  If ((xMReal<>0) or (gip<>0))and((xM<0) and (yM<0)) then
+    angle:=ArcCos(xMReal/gip)+270;
+
+
+  If Round(angle)div 10=36 then o.direction:=0
+   else o.direction:=Round(angle) div 10;
+
+  result:=o.direction;
+end;
 
 function collisionX(o:car; e:entity):Boolean;     //проверка колизии  x
 Begin
@@ -109,6 +157,11 @@ end;
 
 procedure TForm1.FormCreate(Sender:TObject);
 begin
+  yMReal:=5;
+  gip:=6;
+  //xM:=1;
+  //yM:=1;
+
  //
  k:=0;
 
@@ -120,7 +173,7 @@ begin
  //определение координат машины игрока
  p.xCent:=Image1.Width div 2;
  p.yCent:=Image1.Height div 2;
- p.direction:=0;;
+ p.direction:=0;
  p.collisionSize:=90;
 
  //определение координат дома
@@ -152,6 +205,15 @@ begin
  ListImageEntity.Draw(Image1.Canvas,house.xCent,house.yCent,house.index);
 end;
 
+procedure TForm1.Image1MouseMove(Sender:TObject; Shift:TShiftState; X,Y:Integer
+ );
+begin
+ //xM:=x-Image1.Width div 2;
+ //yM:=y-Image1.Height div 2;
+ xM:=x-p.xCent;
+ yM:=y-p.yCent;
+end;
+
 procedure TForm1.Button1Click(Sender:TObject);
 begin
  Dec(p.direction);
@@ -166,7 +228,7 @@ end;
 
 procedure TForm1.Timer1Timer(Sender:TObject);
 Var
- i:Integer;
+ i,plus,minus:Integer;
 begin
  Inc(k);
 
@@ -174,6 +236,26 @@ begin
  Image1.Canvas.Brush.Color:=clWhite;          // смена цвета кисти канваса
  Image1.Canvas.Pen.Color:=clWhite;              // смена цвета ручки канваса
  Image1.Canvas.Rectangle(0,0,Image1.Width,Image1.Height);// заливка канваса белым цветом
+
+ //Определяем направление машины
+  p.NeedDirection:=WhatDirection(p,xM,yM);
+
+
+ //меняем направление машины
+
+ If (p.Direction<>p.NeedDirection) then
+  If ((abs(p.direction-p.NeedDirection))<18) or (p.direction-p.NeedDirection>18) then
+   Begin
+    inc(p.direction);
+    If p.direction>=36 then p.direction:=0;
+   end
+    else
+     Begin
+      Dec(p.direction);
+      If p.direction<=-1 then p.direction:=35;
+     end;
+
+
 
  //поворот машины игрока
  If GetKeyState(39)<-126 then               //если нажата стрелка вправо
@@ -201,8 +283,10 @@ begin
     else If (p.Speed>0) and (k mod 3=0) then Dec(p.Speed);
 
 
+
+
 //высчитывание множителя направления
- //описать весь этот процесс
+ //надо описать весь этот процесс
  Case p.direction of
   0:Begin
      p.MultiplierDirectionX:=0;
@@ -270,13 +354,15 @@ begin
  label13.Caption:=IntToStr(p.yCent+100);
  Label14.Caption:=BoolToStr(collisionX(p,house),'true','false');
  Label15.Caption:=BoolToStr(collisionY(p,house),'true','false');
+ label17.Caption:=IntToStr(xM);
+ label18.Caption:=IntToStr(yM);
+ Label19.Caption:=FloatToStr(angle);
+ label20.Caption:=FloatToStr(gip);
+ label21.Caption:=FloatToStr(yMReal);
+ label22.Caption:=IntToStr(Round(angle));
  //Label16.Caption:=BoolToStr(collision(p,house),'true','false');
 
- {If not collision(p,house) then
-  Begin
-   p.xCent:=p.xCent+p.MultiplierDirectionX;   //движение машины игрока по x
-   p.yCent:=p.yCent+p.MultiplierDirectionY;   //движение машины игрока по y
-  end;}
+
 
  If not (collisionX(p,house) and collisionY(p,house))  then  //если колизия по x и колизия по y нет то машина едет
   Begin
@@ -286,6 +372,8 @@ begin
 
 
 
+ Image1.Canvas.Pen.Color:=clRed;
+ Image1.Canvas.Rectangle(0+Image1.Width-5,0+Image1.Height-5,0+Image1.Width+5,0+Image1.Height+5);
 
  //отрисовка машины игрока
  Image1.Canvas.Pen.Color:=clRed;
