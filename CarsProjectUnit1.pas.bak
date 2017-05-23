@@ -252,9 +252,8 @@ begin
   // я уроки делать
 
  If (p.Direction<>p.NeedDirection) then
-  If (35-p.direction+p.NeedDirection+1 < p.direction-p.NeedDirection)
+  If (35-p.direction+p.NeedDirection+1 < Abs(p.direction-p.NeedDirection))
    and (35-p.direction+p.NeedDirection+1 <> Abs(p.direction-p.NeedDirection))
-   and (p.direction<>0)
    then
    Begin
     inc(p.direction);
@@ -262,9 +261,8 @@ begin
     lastMove:='Inc';
    end
     else
-     If (35-p.direction+p.NeedDirection+1 > p.direction-p.NeedDirection)
+     If (35-p.direction+p.NeedDirection+1 > Abs(p.direction-p.NeedDirection))
       and (35-p.direction+p.NeedDirection+1 <> Abs(p.direction-p.NeedDirection))
-      and (p.direction<>0)
       then
        Begin
         Dec(p.direction);

@@ -234,6 +234,15 @@ Var
  lastMove:string;
  s:integer;
 begin
+
+ {p.ang - сечас
+  ang  -куда надо
+  if (abs(p.ang - ang))<(abs(p.ang-(ang+360)) then rot_dir:=-1
+  else rot_dir:=1
+    p.ang:=p.ang + rot_dir;
+  p.position:=Roung(p.ang) div 10
+ }
+
  Inc(k);
 
  Image1.Canvas.Clear;                       // отчиска канваса
@@ -251,7 +260,7 @@ begin
   // можно попробовать решить, если 0 и более ° считать за 36->37->38 и далее °
   // я уроки делать
 
-{ If (p.Direction<>p.NeedDirection) then
+ If (p.Direction<>p.NeedDirection) then
   If (35-p.direction+p.NeedDirection+1 < Abs(p.direction-p.NeedDirection))
    and (35-p.direction+p.NeedDirection+1 <> Abs(p.direction-p.NeedDirection))
    then
@@ -271,7 +280,7 @@ begin
        end
        else
         If lastMove='Inc' then Inc(p.direction)
-         else If lastMove='Dec' then Dec(p.direction);     }
+         else If lastMove='Dec' then Dec(p.direction);
 
 
 
