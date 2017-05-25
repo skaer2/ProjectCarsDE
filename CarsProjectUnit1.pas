@@ -18,6 +18,8 @@ Const
  MaxRockCount=16;
  TileSize=600;
  BackUpTime=40;
+ MaxBulletCount=15;
+ GunRateOfFire=5;
 
 
  //массивы moveI, moveJ хранят индексы перемещений возможные значения -1, 0, +1
@@ -65,6 +67,14 @@ type
   CoordY:Integer;
  end;
 
+ Bullet=record
+  xCent,yCent:Integer;
+  Exists:Boolean;
+  Speed:Integer;
+  LifeTime:Integer;
+  MultiplierDirectionX,MultiplierDirectionY:Integer; //множитель направления()
+ end;
+
  //gameLevel=record
  // g:array[0..MaxLvlSX, 0..MaxLvlSY] of BackGround;
  //end;
@@ -75,6 +85,7 @@ type
    ChooseCar: TButton;
   Button3:TButton;
   Image1: TImage;
+  BulletTexturesImgList:TImageList;
   MoneyImageList: TImageList;
   BackgroundListImage:TImageList;
   ListImageBot:TImageList;
@@ -86,7 +97,6 @@ type
   procedure Button3Click(Sender:TObject);
   procedure ChooseCarClick(Sender: TObject);
   procedure FormCreate(Sender:TObject);
-  procedure Image1Click(Sender: TObject);
   procedure Image1MouseMove(Sender:TObject; Shift:TShiftState; X,Y:Integer);
   procedure Timer1Timer(Sender:TObject);
 
@@ -128,6 +138,10 @@ var
  obst:array[0..MaxRockCount] of entity; //массив препятствий
 
  bot:car;
+
+ gun:car;
+ ArrBullets:array[0..MaxBulletCount] of Bullet;
+ BulletsExists:Integer;
 
  PBU:ProtocolBackUp;
 
@@ -480,6 +494,27 @@ begin
 //обнуление шага таймера
  k:=0;
 
+//пушка
+ gun.xCent:=0;
+ gun.yCent:=0;
+ gun.direction:=0;
+ gun.collisionSize:=0;
+ gun.Speed:=10;
+ gun.SpeedMax:=0;
+ gun.SpeedMin:=0;
+
+ BulletsExists:=0;
+ For i:=0 to MaxBulletCount do
+  With ArrBullets[i] do
+   Begin
+    ArrBullets[i].xCent:=Image1.Width div 2;
+    ArrBullets[i].yCent:=Image1.Height div 2;
+    Exists:=False;
+    Speed:=0;
+    MultiplierDirectionX:=0;
+    MultiplierDirectionY:=0;
+   end;
+
 //скорость игрока
  p.Speed:=1;
  p.SpeedMax:=15;
@@ -565,11 +600,6 @@ begin
   end;
 end;
 
-procedure TForm1.Image1Click(Sender: TObject);
-begin
-
-end;
-
 
 procedure TForm1.Image1MouseMove(Sender:TObject; Shift:TShiftState; X,Y:Integer
  );
@@ -600,6 +630,9 @@ Var
  indexX,indexY:integer;
  collisionBool:Boolean;
  lk:Integer;
+ maxLifeTime:Integer;
+ IndexMax:Integer;
+ f:Integer;
 begin
  If k+1=MaxInt then k:=0  //увеличение шага таймера
   else Inc(k);
@@ -624,21 +657,20 @@ begin
 
 //
 
-
 //поворот машины игрока  на стрелочки
- Begin
- If GetKeyState(39)<-126 then               //если нажата стрелка вправо
-  Begin
-   Inc(p.direction);
-   If p.direction>=36 then p.direction:=0;
-  end;
- If GetKeyState(37)<-126 then               //если нажата стрелка влево
-  Begin
-   Dec(p.direction);
-   If p.direction<=-1 then p.direction:=35;
-  end;
- end;
-
+ //Begin
+ //If GetKeyState(39)<-126 then               //если нажата стрелка вправо
+ // Begin
+ //  Inc(p.direction);
+ //  If p.direction>=36 then p.direction:=0;
+ // end;
+ //If GetKeyState(37)<-126 then               //если нажата стрелка влево
+ // Begin
+ //  Dec(p.direction);
+ //  If p.direction<=-1 then p.direction:=35;
+ // end;
+ //end;
+ //
 //
 
 
@@ -734,6 +766,64 @@ begin
     end;
   end;
  end;
+
+ //
+
+ Begin
+ If GetKeyState(VK_D)<-126 then               //если нажата стрелка вправо
+  Begin
+   Inc(gun.direction);
+   If gun.direction>=36 then gun.direction:=0;
+  end;
+ If GetKeyState(VK_A)<-126 then               //если нажата стрелка влево
+  Begin
+   Dec(gun.direction);
+   If gun.direction<=-1 then gun.direction:=35;
+  end;
+ end;
+
+ calcMultDir(Sender,gun);
+
+ If (GetKeyState(VK_SPACE)<-126) and (k mod GunRateOfFire=0)then
+  Begin
+   f:=0;
+   For i:=0 to MaxBulletCount do
+    If (not ArrBullets[i].Exists) and (f=0) then
+     Begin
+      f:=1;
+      Inc(BulletsExists);
+      ArrBullets[i].Exists:=True;
+      ArrBullets[i].LifeTime:=0;
+      ArrBullets[i].MultiplierDirectionX:=gun.MultiplierDirectionX;
+      ArrBullets[i].MultiplierDirectionY:=gun.MultiplierDirectionY;
+      ArrBullets[i].xCent:=Image1.Width div 2;
+      ArrBullets[i].yCent:=Image1.Height div 2;
+     end
+     else
+      If BulletsExists>=MaxBulletCount then
+       Begin
+        maxLifeTime:=0;
+        For j:=0 to MaxBulletCount do
+         If ArrBullets[j].LifeTime>maxLifeTime then
+          Begin
+           maxLifeTime:=ArrBullets[j].LifeTime;
+           IndexMax:=j;
+          end;
+        ArrBullets[IndexMax].Exists:=False;
+        Dec(BulletsExists);
+       end;
+  end;
+
+ For i:=0 to MaxBulletCount do
+  With ArrBullets[i] do
+   Begin
+    If Exists then
+     Begin
+      Inc(LifeTime);
+      xCent:=xCent+MultiplierDirectionX;
+      yCent:=yCent+MultiplierDirectionY;
+     end;
+   end;
 
 //
 
@@ -834,8 +924,17 @@ begin
 
 //
 
- //рисование дома
-  //ListImageEntity.Draw(Image1.Canvas,house.xCent-house.width,house.yCent-house.height,house.index);
+  For i:=0 to MaxBulletCount do
+   With ArrBullets[i] do
+    Begin
+     If Exists then
+      Begin
+       BulletTexturesImgList.Draw(Image1.Canvas,xCent-32,yCent-32,0);
+       //xCent:=xCent+MultiplierDirectionX;
+       //yCent:=yCent+MultiplierDirectionY;
+      end;
+    end;
+
 end;
 
 end.
