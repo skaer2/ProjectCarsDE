@@ -9,6 +9,7 @@ uses
  Windows,math;
 
 Const
+ RedMoneyCost=10;
  MaxLvlSX=12;
  MaxLvlSY=12;
  MaxCrossCount=5;
@@ -18,6 +19,7 @@ Const
  MaxRockCount=16;
  TileSize=600;
  BackUpTime=40;
+ CostCar2=100;
 
 
  //массивы moveI, moveJ хранят индексы перемещений возможные значения -1, 0, +1
@@ -72,9 +74,29 @@ type
  { TForm1 }
 
  TForm1 = class(TForm)
+   AcceptSettingsBtn: TButton;
+   BuyCarBtn: TButton;
+   LULZImg: TImageList;
+   LOLBtn: TButton;
+   CostCarLbl: TLabel;
+   DonateImg: TImage;
+   SelectCarOneBtn: TButton;
+   SelectCarTwoBtn: TButton;
+   ExitBtn: TButton;
+   DonateBtn: TButton;
+   CarOneImg: TImage;
+   CarTwoImg: TImage;
+   ImageList1: TImageList;
+   Label1: TLabel;
+   Label2: TLabel;
+   ListImageCarTwo: TImageList;
+   MoneyColLbl: TLabel;
+   SettingsPnl: TPanel;
+   SettingsBtn: TButton;
    ChooseCar: TButton;
   Button3:TButton;
   Image1: TImage;
+  ScoreLbl: TLabel;
   MoneyImageList: TImageList;
   BackgroundListImage:TImageList;
   ListImageBot:TImageList;
@@ -83,11 +105,22 @@ type
   MainMenuPnl: TPanel;
   ChooseCarPnl: TPanel;
   Timer1:TTimer;
+  SpinnerTimer: TTimer;
+  procedure AcceptSettingsBtnClick(Sender: TObject);
   procedure Button3Click(Sender:TObject);
+  procedure BuyCarBtnClick(Sender: TObject);
   procedure ChooseCarClick(Sender: TObject);
+  procedure DonateBtnClick(Sender: TObject);
+  procedure DonateImgClick(Sender: TObject);
+  procedure ExitBtnClick(Sender: TObject);
+  procedure FormCloseQuery(Sender: TObject; var CanClose: boolean);
+  procedure LOLBtnClick(Sender: TObject);
+  procedure SettingsBtnClick(Sender: TObject);
+  procedure SettingsPnlClick(Sender: TObject);
   procedure FormCreate(Sender:TObject);
   procedure Image1Click(Sender: TObject);
   procedure Image1MouseMove(Sender:TObject; Shift:TShiftState; X,Y:Integer);
+  procedure SpinnerTimerTimer(Sender: TObject);
   procedure Timer1Timer(Sender:TObject);
 
   procedure InitLevel(Sender:TObject{; level:gameLevel});
@@ -106,6 +139,8 @@ type
 var
  Form1: TForm1;
 
+ Sp:integer;
+
  p:car;  //игрок
 
  k:Integer;    //число шагов таймера
@@ -122,6 +157,8 @@ var
 
  RoadCount:Integer; //количество дорог
 
+ ScoreStorage,ScoreContainer:integer; //очки
+
  LevelCentX:Integer;
  LevelCentY:Integer;
 
@@ -130,6 +167,10 @@ var
  bot:car;
 
  PBU:ProtocolBackUp;
+
+ MoneyCount:integer;
+
+ data:TextFile;
 
 implementation
 
@@ -464,6 +505,25 @@ Var
  moneyRandX,moneyRandY:integer;
  s:string;
 begin
+ AssignFile(data,'Data.txt');
+ if FileExists('Data.txt') then
+ begin
+   Reset(data);
+   while not Eof(data) do
+   begin
+     readln(data,s);
+     ScoreStorage:=StrToInt(s);
+     readln(data,s);
+     MoneyCount:=StrToInt(s);
+   end;
+ end
+ else
+ begin
+   rewrite(data);
+   ScoreStorage:=0;
+   MoneyCount:=0;
+ end;
+
  LevelCentX:=0;
  LevelCentY:=0;
 
@@ -482,7 +542,7 @@ begin
 
 //скорость игрока
  p.Speed:=1;
- p.SpeedMax:=15;
+ p.SpeedMax:=17;
  p.SpeedMin:=-7;
 
 //скорость бота
@@ -563,6 +623,21 @@ begin
     if (mon[moneyRandX,moneyRandY]=false) and (g[moneyRandX,moneyRandY].GroundType=0) then
       mon[moneyRandX,moneyRandY]:=true;
   end;
+
+  For i:=0 to MaxLvlSX do
+   For j:=0 to MaxLvlSY do
+   begin
+    If g[i,j].GroundType=1 then
+     Begin
+      BackgroundListImage.Draw(Image1.Canvas,g[i,j].xLeft,g[i,j].yUp,0);
+      ImageList1.Draw(Image1.Canvas,g[i,j].xLeft,g[i,j].yUp,0);
+     end
+     else BackgroundListImage.Draw(Image1.Canvas,g[i,j].xLeft,g[i,j].yUp,g[i,j].GroundType);
+    If (g[i,j].GroundType=0)and(mon[i,j]) then
+      MoneyImageList.Draw(Image1.Canvas,g[i,j].xLeft,g[i,j].yUp,1);
+   end;
+
+  MoneyColLbl.Caption:='Money:'+IntToStr(MoneyCount);
 end;
 
 procedure TForm1.Image1Click(Sender: TObject);
@@ -580,18 +655,115 @@ begin
  yM:=y-p.yCent;
 end;
 
+procedure TForm1.SpinnerTimerTimer(Sender: TObject);
+begin
+ inc(sp);
+ if sp>=36 then sp:=0;
+ CarOneImg.Canvas.Clear;                       // отчиска канваса
+ CarOneImg.Canvas.Brush.Color:=clWhite;          // смена цвета кисти канваса
+ CarOneImg.Canvas.Pen.Color:=clWhite;              // смена цвета ручки канваса
+ CarOneImg.Canvas.Rectangle(0,0,Image1.Width,Image1.Height);// заливка канваса белым цветом
+ ListImage.Draw(CarOneImg.Canvas,CarOneImg.Width div 2-p.collisionSize,CarOneImg.Height div 2-p.collisionSize,sp);
+ CartwoImg.Canvas.Rectangle(0,0,Image1.Width,Image1.Height);// заливка канваса белым цветом
+ CartwoImg.Canvas.Clear;                       // отчиска канваса
+ CartwoImg.Canvas.Brush.Color:=clWhite;          // смена цвета кисти канваса
+ CartwoImg.Canvas.Pen.Color:=clWhite;              // смена цвета ручки канваса
+ CartwoImg.Canvas.Rectangle(0,0,Image1.Width,Image1.Height);// заливка канваса белым цветом
+ ListImageCarTwo.Draw(CarTwoImg.Canvas,CarOneImg.Width div 2-p.collisionSize,CarOneImg.Height div 2-p.collisionSize,sp);
+end;
+
 
 procedure TForm1.Button3Click(Sender:TObject);
 begin
+ Timer1.Enabled:=true;
  p.xCent:=0+Image1.Width div 2;
  p.yCent:=0+Image1.Height div 2;
  movingBck:=not movingBck;
  MainMenuPnl.Visible:=false;
+ ScoreLbl.Visible:=true;
+ ChooseCarPnl.Visible:=false;
+ ScoreContainer:=0;
+end;
+
+procedure TForm1.BuyCarBtnClick(Sender: TObject);
+begin
+  if MoneyCount>=CostCar2 then
+    begin
+     moneyCount:=MoneyCount-CostCar2;
+     SelectCarTwoBtn.Enabled:=true;
+     BuyCarBtn.Visible:=false;
+     CostCarLbl.Visible:=false;
+     MoneyColLbl.Caption:='Money:'+IntToStr(MoneyCount);
+    end;
+end;
+
+procedure TForm1.AcceptSettingsBtnClick(Sender: TObject);
+begin
+  MainMenuPnl.Visible:=true;
+  SettingsPnl.Visible:=false;
 end;
 
 procedure TForm1.ChooseCarClick(Sender: TObject);
 begin
+  sp:=0;
   ChooseCarPnl.Visible:=not ChooseCarPnl.Visible;
+  SpinnerTimer.Enabled:=not SpinnerTimer.Enabled;
+  CostCarLbl.Caption:='Cost:'+IntToStr(CostCar2);
+end;
+
+procedure TForm1.DonateBtnClick(Sender: TObject);
+begin
+ Image1.Visible:=false;
+ MainMenuPnl.Visible:=false;
+ ChooseCarPnl.Visible:=false;
+ DonateImg.Visible:=True;
+ LOLBtn.Visible:=True;
+ DonateImg.Canvas.Clear;
+ DonateImg.Canvas.Brush.Color:=clWhite;
+ DonateImg.Canvas.Pen.Color:=clWhite;
+ DonateImg.Canvas.Rectangle(0,0,Image1.Width,Image1.Height);
+ LULZImg.Draw(DonateImg.Canvas,DonateImg.Width,CarOneImg.Height,0);
+end;
+
+procedure TForm1.DonateImgClick(Sender: TObject);
+begin
+
+end;
+
+procedure TForm1.ExitBtnClick(Sender: TObject);
+begin
+  close;
+end;
+
+procedure TForm1.FormCloseQuery(Sender: TObject; var CanClose: boolean);
+var
+ s:string;
+begin
+  s:=IntToStr(ScoreStorage);
+  WriteLn(Data,s);
+  s:=IntToStr(MoneyCount);
+  writeln(Data,s);
+  CloseFile(data);
+end;
+
+procedure TForm1.LOLBtnClick(Sender: TObject);
+begin
+ Image1.Visible:=true;
+ MainMenuPnl.Visible:=true;
+ DonateImg.Visible:=false;
+ LOLBtn.Visible:=false;
+end;
+
+procedure TForm1.SettingsBtnClick(Sender: TObject);
+begin
+  ChooseCarPnl.Visible:=false;
+  MainMenuPnl.Visible:=false;
+  SettingsPnl.Visible:=true;
+end;
+
+procedure TForm1.SettingsPnlClick(Sender: TObject);
+begin
+
 end;
 
 procedure TForm1.Timer1Timer(Sender:TObject);
@@ -671,6 +843,7 @@ begin
      and ((g[i,j].yUp+TileSize div 2)<=(Image1.Height div 2)+(TileSize div 2))
       then indexY:=j;
    end;
+
  If checkBounds(indexX,indexY) then
   Begin
    If (g[indexX,indexY].GroundType=2)
@@ -688,6 +861,20 @@ begin
       end;
  end;
 
+//
+
+//
+ If checkBounds(indexX,indexY) then
+  if (g[indexX,indexY].GroundType=0)and(mon[indexX,indexY])then
+   begin
+     mon[indexX,indexY]:=false;
+     ScoreContainer:=ScoreContainer+RedMoneyCost;
+     MoneyCount:=MoneyCount+RedMoneyCost;
+     BackgroundListImage.Draw(Image1.Canvas,g[indexX,indexY].xLeft,g[indexX,indexY].yUp,g[indexX,indexY].GroundType);
+   end;
+
+
+ ScoreLbl.Caption:='SCORE:'+IntToStr(ScoreContainer);
 //
 
 
@@ -802,10 +989,10 @@ begin
     If g[i,j].GroundType=1 then
      Begin
       BackgroundListImage.Draw(Image1.Canvas,g[i,j].xLeft,g[i,j].yUp,0);
-      BackgroundListImage.Draw(Image1.Canvas,g[i,j].xLeft,g[i,j].yUp,g[i,j].GroundType);
+      ImageList1.Draw(Image1.Canvas,g[i,j].xLeft,g[i,j].yUp,0);
      end
      else BackgroundListImage.Draw(Image1.Canvas,g[i,j].xLeft,g[i,j].yUp,g[i,j].GroundType);
-     If (g[i,j].GroundType=0)and(mon[i,j]) then
+    If (g[i,j].GroundType=0)and(mon[i,j]) then
       //BackgroundListImage.Draw(Image1.Canvas,g[i,j].xLeft,g[i,j].yUp,0);
       MoneyImageList.Draw(Image1.Canvas,g[i,j].xLeft,g[i,j].yUp,1);
    end;
@@ -833,9 +1020,7 @@ begin
     // Image1.Canvas.Rectangle(obst[lk].xUpLeft,obst[lk].yUpLeft,obst[lk].xDownRight,obst[lk].yDownRight);
 
 //
-
- //рисование дома
-  //ListImageEntity.Draw(Image1.Canvas,house.xCent-house.width,house.yCent-house.height,house.index);
+  MoneyColLbl.Caption:='Money:'+IntToStr(MoneyCount);
 end;
 
 end.
