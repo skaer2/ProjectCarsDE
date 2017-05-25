@@ -716,13 +716,14 @@ begin
  Image1.Visible:=false;
  MainMenuPnl.Visible:=false;
  ChooseCarPnl.Visible:=false;
+ MoneyColLbl.Visible:=false;
  DonateImg.Visible:=True;
  LOLBtn.Visible:=True;
  DonateImg.Canvas.Clear;
  DonateImg.Canvas.Brush.Color:=clWhite;
  DonateImg.Canvas.Pen.Color:=clWhite;
  DonateImg.Canvas.Rectangle(0,0,Image1.Width,Image1.Height);
- LULZImg.Draw(DonateImg.Canvas,DonateImg.Width,CarOneImg.Height,0);
+ DonateImg.Picture.LoadFromFile('003.png');
 end;
 
 procedure TForm1.DonateImgClick(Sender: TObject);
@@ -750,6 +751,7 @@ procedure TForm1.LOLBtnClick(Sender: TObject);
 begin
  Image1.Visible:=true;
  MainMenuPnl.Visible:=true;
+ MoneyColLbl.Visible:=true;
  DonateImg.Visible:=false;
  LOLBtn.Visible:=false;
 end;
