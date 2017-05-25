@@ -9,8 +9,8 @@ uses
  Windows,math;
 
 Const
- MaxLvlSX=10;
- MaxLvlSY=10;
+ MaxLvlSX=12;
+ MaxLvlSY=12;
  MaxCrossCount=5;
  MinCrossDistanceFromCenter=3;
  MaxCrossChance=8;
@@ -72,46 +72,22 @@ type
  { TForm1 }
 
  TForm1 = class(TForm)
-  Button1:TButton;
-  Button2:TButton;
+   ChooseCar: TButton;
   Button3:TButton;
+  Image1: TImage;
   MoneyImageList: TImageList;
-  ResBot: TButton;
-  Image1:TImage;
   BackgroundListImage:TImageList;
-  Label10:TLabel;
-  Label11:TLabel;
-  Label12:TLabel;
-  Label13:TLabel;
-  Label14:TLabel;
-  Label15:TLabel;
-  Label16:TLabel;
-  Label17:TLabel;
-  Label18:TLabel;
-  Label19:TLabel;
-  Label20:TLabel;
-  Label21:TLabel;
-  Label22:TLabel;
-  Label4:TLabel;
-  Label5:TLabel;
-  Label6:TLabel;
-  Label7:TLabel;
-  Label8:TLabel;
-  Label9:TLabel;
   ListImageBot:TImageList;
   ListImageEntity:TImageList;
-  Label1:TLabel;
-  Label2:TLabel;
-  Label3:TLabel;
   ListImage:TImageList;
-  Memo1:TMemo;
+  MainMenuPnl: TPanel;
+  ChooseCarPnl: TPanel;
   Timer1:TTimer;
-  procedure Button1Click(Sender:TObject);
-  procedure Button2Click(Sender:TObject);
   procedure Button3Click(Sender:TObject);
+  procedure ChooseCarClick(Sender: TObject);
   procedure FormCreate(Sender:TObject);
+  procedure Image1Click(Sender: TObject);
   procedure Image1MouseMove(Sender:TObject; Shift:TShiftState; X,Y:Integer);
-  procedure ResBotClick(Sender: TObject);
   procedure Timer1Timer(Sender:TObject);
 
   procedure InitLevel(Sender:TObject{; level:gameLevel});
@@ -131,13 +107,10 @@ var
  Form1: TForm1;
 
  p:car;  //игрок
- house:entity; //дом
 
  k:Integer;    //число шагов таймера
 
  xM,yM:Integer; //xMouse yMouse
- gip:real; //Гипотенуза при работе с xM и yM
- angle:real; //Угол при работе с xM и yM
 
  yMReal,xMReal:Real;//кажется не нужно
 
@@ -301,6 +274,7 @@ Begin
     g[x,y].changed:=True;
    end;
 
+
  //Memo1.Lines.Add('start  x '+IntToStr(x)+' y '+IntToStr(y));
 
  ProLevelGen(Sender,x,y,0,1,1);
@@ -315,8 +289,6 @@ Begin
     g[x,y].GroundType:=1;
    end;
  until rockCount=MaxRockCount;
-
- //MoneyImageList.Draw(Image1.Canvas,x*64,y*64,g[x,y].GroundType);
 end;
 
 Procedure TForm1.ProLevelGen(Sender:TObject; x,y:Integer; BeforeDirection:Integer; CrossCount:Integer; k:Integer);
@@ -500,22 +472,17 @@ begin
   For i:=0 to MaxLvlSX do
    For j:=0 to MaxLvlSY do
     Begin
-     g[i,j].xLeft:=i*TileSize;
-     g[i,j].yUp:=j*TileSize;
+     g[i,j].xLeft:=-((MaxLvlSX div 2)*TileSize)+i*TileSize;
+     g[i,j].yUp:=-((MaxLvlSY div 2)*TileSize)+j*TileSize;
     end;
 
-
-//кажется не нужно
-  xMReal:=5;
-  yMReal:=5;
-  gip:=6;
 
 //обнуление шага таймера
  k:=0;
 
 //скорость игрока
  p.Speed:=1;
- p.SpeedMax:=35;
+ p.SpeedMax:=15;
  p.SpeedMin:=-7;
 
 //скорость бота
@@ -537,21 +504,6 @@ begin
  bot.direction:=0;
  bot.collisionSize:=90;
 
-//определение координат дома    | не нужно
- //Randomize;
- house.xCent:=223 {Random(Image1.Width-20)};
- house.yCent:=550 {Random(Image1.Height-20)};
- house.width:=110;
- house.height:=110;
- With house do
-  Begin
-   xUpLeft:=xCent-width;
-   xDownRight:=xCent+width;
-   yUpLeft:=yCent-height;
-   yDownRight:=yCent+height;
-   index:=0;
-  end;
-
 
  //начальная обработка канваса
  Image1.Canvas.Clear;                       // отчиска канваса
@@ -565,8 +517,6 @@ begin
  //отрисовка машины бота
  ListImageBot.Draw(Image1.Canvas,bot.xCent,bot.yCent,bot.direction);
 
- //отрисовка оъектов
- ListImageEntity.Draw(Image1.Canvas,house.xCent,house.yCent,house.index);
 
 //инициализация уровня
  RoadCount:=0;
@@ -580,6 +530,7 @@ begin
 //
 
 //координаты препятствий
+
   lk:=0;
 
   For i:=0 to MaxLvlSX do
@@ -594,8 +545,8 @@ begin
         yDownRight:=yDownRight+TileSize;
         xCent:=TileSize div 2;
         yCent:=TileSize div 2;
-        width:=TileSize;
-        height:=TileSize;
+        width:=TileSize-200;
+        height:=TileSize-200;
        end;
       Inc(lk);
      end;
@@ -614,6 +565,12 @@ begin
   end;
 end;
 
+procedure TForm1.Image1Click(Sender: TObject);
+begin
+
+end;
+
+
 procedure TForm1.Image1MouseMove(Sender:TObject; Shift:TShiftState; X,Y:Integer
  );
 begin
@@ -623,30 +580,18 @@ begin
  yM:=y-p.yCent;
 end;
 
-procedure TForm1.ResBotClick(Sender: TObject);
-begin
-  Bot.xCent:=image1.Width div 2;
-  Bot.yCent:=image1.Height div 2;
-  PBU.Bool:=False;
-end;
-
-procedure TForm1.Button1Click(Sender:TObject);
-begin
- Dec(p.direction);
- If p.direction<=-1 then p.direction:=35;
-end;
-
-procedure TForm1.Button2Click(Sender:TObject);
-begin
- Inc(p.direction);
- If p.direction>=36 then p.direction:=0;
-end;
 
 procedure TForm1.Button3Click(Sender:TObject);
 begin
  p.xCent:=0+Image1.Width div 2;
  p.yCent:=0+Image1.Height div 2;
  movingBck:=not movingBck;
+ MainMenuPnl.Visible:=false;
+end;
+
+procedure TForm1.ChooseCarClick(Sender: TObject);
+begin
+  ChooseCarPnl.Visible:=not ChooseCarPnl.Visible;
 end;
 
 procedure TForm1.Timer1Timer(Sender:TObject);
@@ -734,7 +679,13 @@ begin
      then p.roadSpeed:=5
       else p.roadSpeed:=0;
   end
-  else ShowMessage(IntToStr(indexX)+' '+IntToStr(indexY));
+  else
+    For i:=0 to MaxLvlSX do
+     For j:=0 to MaxLvlSY do
+      Begin
+       g[i,j].xLeft:=-((MaxLvlSX div 2)*TileSize)+i*TileSize;
+       g[i,j].yUp:=-((MaxLvlSY div 2)*TileSize)+j*TileSize;
+      end;
  end;
 
 //
@@ -755,32 +706,6 @@ begin
    end;
 //
 
-
- Label1.Caption:=IntToStr(p.MultiplierDirectionX);  //вывод множителя х на экран
- Label2.Caption:=IntToStr(p.MultiplierDirectionY);  //вывод множителя y на экран
- Label3.Caption:=IntToStr(p.direction);             //вывод направления на экран
- Label4.Caption:=IntToStr(house.xUpLeft);
- label5.Caption:=IntToStr(house.yUpLeft);
- label6.Caption:=IntToStr(house.xDownRight);
- label7.Caption:=IntToStr(house.yDownRight);
- label8.Caption:=IntToStr(p.xCent);
- label9.Caption:=IntToStr(p.yCent);
- label10.Caption:=IntToStr(p.xCent-100);
- label11.Caption:=IntToStr(p.yCent-100);
- label12.Caption:=IntToStr(p.xCent+100);
- label13.Caption:=IntToStr(p.yCent+100);
- Label14.Caption:=BoolToStr(collisionX(p,house),'true','false');
- Label15.Caption:=BoolToStr(collisionY(p,house),'true','false');
- label17.Caption:=IntToStr(xM);
- label18.Caption:=IntToStr(yM);
- Label19.Caption:=IntToStr(p.NeedDirection);
- label20.Caption:=IntToStr(35-p.direction+p.NeedDirection+1)+'   '+IntToStr( Abs(p.direction-p.NeedDirection));
- Memo1.Clear;
- Memo1.Lines.Add(IntToStr(indexX)+' '+IntToStr(indexY));
- Memo1.Lines.Add(BoolToStr(PBU.Bool,'on','off'));
- Memo1.Lines.Add(IntToStr(PBU.CoordX)+'   '+IntToStr(PBU.CoordY));
-  Memo1.Lines.Add(IntToStr(bot.Speed)+'   '+IntToStr(PBU.CoordY));
- //Memo1.Lines.Add(IntToStr());
 
 //проверка колизии игрока и движение
  Begin
@@ -811,35 +736,23 @@ begin
  end;
 
 //
- collisionBool:=False;
 
- If PBU.Bool then
-  Begin
-   Inc(PBU.Count);
-   If PBU.Count=BackUpTime then PBU.Bool:=False;
-   DecSpeed(Sender, bot);
-  end
-  else If not PBU.Bool then
-   Begin
-    //Определяем направление машины бота
+  //Определяем направление машины бота
       bot.NeedDirection:=WhatDirection(bot,(Image1.Width div 2)-bot.xCent,(Image1.Height div 2)-bot.yCent);
       ChangeCarDir(Sender, bot);
     //
-   end;
-
-
 
  calcMultDir(Sender, bot);
- If p.Speed=0 then
-  Begin
-   p.MultiplierDirectionX:=0;
-   p.MultiplierDirectionY:=0;
-  end
-  else If p.Speed<0 then
-   Begin
-    p.MultiplierDirectionX:=p.MultiplierDirectionX*-1;
-    p.MultiplierDirectionY:=p.MultiplierDirectionY*-1;
-   end;
+ //If p.Speed=0 then
+ // Begin
+ //  p.MultiplierDirectionX:=0;
+ //  p.MultiplierDirectionY:=0;
+ // end
+ // else If p.Speed<0 then
+ //  Begin
+ //   p.MultiplierDirectionX:=p.MultiplierDirectionX*-1;
+ //   p.MultiplierDirectionY:=p.MultiplierDirectionY*-1;
+ //  end;
 
 
  For lk:=0 to MaxRockCount do
@@ -847,18 +760,11 @@ begin
     then collisionBool:=True; //если колизия по x и колизия по y нет то машина едет
  If  not (collisionBool)  then
   Begin
-   If not PBU.Bool then IncSpeed(Sender, bot);
+   IncSpeed(Sender, bot);
    bot.xCent:=bot.xCent+bot.MultiplierDirectionX;
    bot.yCent:=bot.yCent+bot.MultiplierDirectionY;
-  end
-  else If not PBU.Bool then
-   Begin
-    PBU.CoordX:=bot.xCent+bot.MultiplierDirectionX;
-    PBU.CoordY:=bot.YCent+bot.MultiplierDirectionY;
-    PBU.Bool:=True;
-    bot.NeedDirection:=WhatDirection(bot,(PBU.CoordX),(PBU.CoordY));
-    ChangeCarDir(Sender, bot);
-   end;
+  end;
+
 
 
 
@@ -878,16 +784,13 @@ begin
         yDownRight:=yUpLeft+TileSize;
         xCent:=TileSize div 2;
         yCent:=TileSize div 2;
-        width:=TileSize;
-        height:=TileSize;
+        width:=TileSize-200;
+        height:=TileSize-200;
        end;
       Inc(lk);
      end;
 
 //
-
- //Image1.Canvas.Pen.Color:=clRed;
- //Image1.Canvas.Rectangle(0+Image1.Width-5,0+Image1.Height-5,0+Image1.Width+5,0+Image1.Height+5);
 
 //отрисовка заднего фона
     //0 пустой тайл; 1 тайл с преградой; 2 тайл с перекрёстком;
