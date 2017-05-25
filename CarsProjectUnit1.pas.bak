@@ -20,6 +20,8 @@ Const
  BackUpTime=40;
  MaxBulletCount=15;
  GunRateOfFire=5;
+ BotMaxHP=50;
+ PlayerMaxHP=100;
 
 
  //массивы moveI, moveJ хранят индексы перемещений возможные значения -1, 0, +1
@@ -42,6 +44,7 @@ type
    collisionSize:Integer; //размер колизии для машины
    roadSpeed:Integer;
    HitPoints:Integer;
+   HPMax:Integer;
  end;
 
  //тип данных объектов
@@ -533,12 +536,16 @@ begin
  p.yCent:=Image1.Height div 2;
  p.direction:=0;
  p.collisionSize:=90;
+ p.HPMax:=PlayerMaxHP;
+ p.HitPoints:=p.HPMax;
 
 //определение координат машины бота
  bot.xCent:=Image1.Width-100;
  bot.yCent:=Image1.Height-100;
  bot.direction:=0;
  bot.collisionSize:=90;
+ bot.HPMax:=BotMaxHP;
+ bot.HitPoints:=bot.HPMax;
 
 
  //начальная обработка канваса
@@ -823,6 +830,14 @@ begin
       Inc(LifeTime);
       xCent:=xCent+MultiplierDirectionX;
       yCent:=yCent+MultiplierDirectionY;
+      If ((xCent>bot.xCent-bot.collisionSize div 2) and (xCent<bot.xCent+bot.collisionSize div 2)
+       and (yCent>bot.yCent-bot.collisionSize div 2) and (yCent<bot.yCent+bot.collisionSize div 2))
+       then
+        Begin
+         ArrBullets[IndexMax].Exists:=False;
+         Dec(BulletsExists);
+         If Exists then Dec(bot.HitPoints,10);
+        end;
      end;
    end;
 
@@ -856,8 +871,10 @@ begin
    bot.yCent:=bot.yCent+bot.MultiplierDirectionY;
   end;
 
-
-
+                 //!!!!!!!
+{!!!!} If bot.HitPoints<=0 then ShowMessage('Dead');   //!!!!!
+                 //!!!!!!!
+//
 
 //координаты препятствий
 
